@@ -8,9 +8,11 @@
 
 import UIKit
 
+
 class TodoListViewController: UITableViewController {
 
-    var itemArray = ["Find Mike", "Buy Eggs", "Destroy Demogorgon"]
+//    var itemArray = ["Find Mike", "Buy Eggs", "Destroy Demogorgon"]
+    var itemArray: [Item] = []
     
     let defaults = UserDefaults.standard
     
@@ -18,8 +20,11 @@ class TodoListViewController: UITableViewController {
         super.viewDidLoad()
         
         // Do any additional setup after loading the view.
-        if let items = defaults.array(forKey: "ToDoListArray") as? [String] {
-            itemArray = items
+        if let items = defaults.object(forKey: "ToDoListArray") as? Data  {
+            let decoder = JSONDecoder()
+            if let item = try? decoder.decode(Item.self, from: items) {
+                itemArray.append(item)
+            }
         }
     }
     
@@ -30,47 +35,45 @@ class TodoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let item = itemArray[indexPath.row]
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "TodoItemCell", for: indexPath)
-        
-        cell.textLabel?.text = itemArray[indexPath.row]
+        cell.textLabel?.text = item.title
+        cell.accessoryType = item.selected ? .checkmark : .none
         return cell
     }
     
     //MARK - TableView Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//        print(itemArray[indexPath.row])
         
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
-        
+        itemArray[indexPath.row].selected = !itemArray[indexPath.row].selected
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
     //MARK - Add new Items
-    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
-        var localTextFiled = UITextField()
+        var localTextField = UITextField()
         
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //What will happend once the User clicks the Add Item Button on our UIAlert
+            let item : Item = Item(name: localTextField.text!)
+            self.itemArray.append(item)
             
-            self.itemArray.append(localTextFiled.text!)
-            
-            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(self.itemArray) {
+                self.defaults.set(encoded, forKey: "TodoListArray")
+            }
             
             self.tableView.reloadData()
         }
         
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
-            localTextFiled = alertTextField
+            localTextField = alertTextField
         }
         alert.addAction(action)
         
