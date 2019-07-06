@@ -11,21 +11,14 @@ import UIKit
 
 class TodoListViewController: UITableViewController {
 
-//    var itemArray = ["Find Mike", "Buy Eggs", "Destroy Demogorgon"]
-    var itemArray: [Item] = []
+    var itemArray = [Item]()
     
-    let defaults = UserDefaults.standard
+//    let defaults = UserDefaults.standard
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Do any additional setup after loading the view.
-        if let items = defaults.object(forKey: "ToDoListArray") as? Data  {
-            let decoder = JSONDecoder()
-            if let item = try? decoder.decode(Item.self, from: items) {
-                itemArray.append(item)
-            }
-        }
+        loadItems()
     }
     
     //MARK - Table View DataSource Methods
@@ -47,7 +40,8 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         itemArray[indexPath.row].selected = !itemArray[indexPath.row].selected
-        tableView.reloadData()
+        
+        saveItems()
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
@@ -62,13 +56,7 @@ class TodoListViewController: UITableViewController {
             //What will happend once the User clicks the Add Item Button on our UIAlert
             let item : Item = Item(name: localTextField.text!)
             self.itemArray.append(item)
-            
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(self.itemArray) {
-                self.defaults.set(encoded, forKey: "TodoListArray")
-            }
-            
-            self.tableView.reloadData()
+            self.saveItems()
         }
         
         alert.addTextField { (alertTextField) in
@@ -80,5 +68,30 @@ class TodoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
+    //MARK: Model Manipulation methods
+
+    func saveItems(){
+        let encoder = PropertyListEncoder()
+        do
+        {
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        }catch{
+            print("Error encoding itemArray, \(error)")
+        }
+        tableView.reloadData()
+    }
+    
+    func loadItems(){
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do
+            {
+                itemArray = try decoder.decode([Item].self, from: data)
+            }catch {
+                print("Error decoding itemArray, \(error)")
+            }
+        }
+    }
 }
 
